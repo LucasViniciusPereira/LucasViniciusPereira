@@ -1,17 +1,30 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: aspnet-core-webapi-6
+  title: ASP.NET Core 6 Web API
+  description: Utilize este modelo básico para criar um novo projeto utilizando ASP.NET Core 6
+  tags: 
+    - dotnet
+    - NET Core
+    - API
+    - aspnetcore
+spec:
+  owner: web@example.com
+  type: website
+  ### Criando formulário para capturar os dados do projeto
   parameters:
     - title: Configuração do projeto
       required:
         - name
         - title
         - description
-        - namespace
       properties:
         name:
           title: Nome
           type: string
           description: Dê o nome para o seu projeto. (Use apenas letras, números, pontos e hífens)
           ui:autofocus: true
-
         title:
           title: Título
           type: string
@@ -21,22 +34,14 @@
           title: Descrição
           type: string
           description: Escreva uma breve descrição sobre o projeto.
-          ui:options:
-            rows: 5
-
-        namespace:
-          title: Namespace (Raiz do projeto)
-          type: string
-          description: Informe o namespace do projeto (Use apenas letras e pontos).
-
         owner:
-          title: Área responsável pelo projeto
+          title: Owner
           type: string
-          description: Informe a equipe responsável pelo projeto
+          description: Owner of the component
           ui:field: OwnerPicker
           ui:options:
-            allowedHosts: [Group]
-
+            allowedKinds:
+              - Group
     - title: Configuração do Repositório do seu projeto
       required:
         - repoUrl
@@ -48,7 +53,6 @@
           ui:options:
             allowedHosts:
               - github.com
-
   ### Implementando as task com as informações do formulário
   steps:
     - id: template
@@ -59,28 +63,31 @@
         copyWithoutRender:
           - .github/workflows/*
         values:
-          name: '{{ parameters.name }}'
-          title: '{{ parameters.title }}'
-          description: '{{ parameters.description }}'
-          namespace: '{{ parameters.namespace }}'
-          owner: '{{ parameters.owner }}'
-          destination: '{{ parseRepoUrl parameters.repoUrl }}'
+          name: ${{ parameters.name }}
+          title: ${{ parameters.title }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          destination: ${{ parameters.repoUrl | parseRepoUrl }}
 
     - id: publish
       name: Publicar projeto no repositorio
       action: publish:github
       input:
-        allowedHosts: ['github.com']
-        description: 'This is {{ parameters.name }}'
-        repoUrl: '{{ parameters.repoUrl }}'
+        allowedHosts: ["github.com"]
+        description: This is ${{ parameters.name }}
+        repoUrl: ${{ parameters.repoUrl }}
 
     - id: register
       name: Registar projeto ao catalogo
       action: catalog:register
       input:
-        repoContentsUrl: '{{ steps.publish.output.repoContentsUrl }}'
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'
 
   output:
-    remoteUrl: '{{ steps.publish.output.remoteUrl }}'
-    entityRef: '{{ steps.publish.output.entityRef }}'
+   links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Abrir catalogo
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
