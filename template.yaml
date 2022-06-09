@@ -1,67 +1,87 @@
-apiVersion: scaffolder.backstage.io/v1beta3
-kind: Template
-# some metadata about the template itself
-metadata:
-  name: v1beta3-demo
-  title: Test Action template
-  description: scaffolder v1beta3 template demo
-spec:
-  owner: backstage/techdocs-core
-  type: service
-
-  # these are the steps which are rendered in the frontend with the form input
+### Criando formulário para capturar os dados do projeto
   parameters:
-    - title: Fill in some steps
+    - title: Configuração do projeto
       required:
         - name
+        - title
+        - description
+        - namespace
       properties:
         name:
-          title: Name
+          title: Nome
           type: string
-          description: Unique name of the component
+          description: Dê o nome para o seu projeto. (Use apenas letras, números, pontos e hífens)
           ui:autofocus: true
+
+        title:
+          title: Título
+          type: string
+          description: Dê o nome amigável para o seu projeto. (Será exibido no README e no catálogo de componentes)
+
+        description:
+          title: Descrição
+          type: string
+          description: Escreva uma breve descrição sobre o projeto.
           ui:options:
             rows: 5
-    - title: Choose a location
+
+        namespace:
+          title: Namespace (Raiz do projeto)
+          type: string
+          description: Informe o namespace do projeto (Use apenas letras e pontos).
+
+        owner:
+          title: Área responsável pelo projeto
+          type: string
+          description: Informe a equipe responsável pelo projeto
+          ui:field: OwnerPicker
+          ui:options:
+            allowedHosts: [Group]
+
+    - title: Configuração do Repositório do seu projeto
       required:
         - repoUrl
       properties:
         repoUrl:
-          title: Repository Location
+          title: Local do repositorio da empresa
           type: string
           ui:field: RepoUrlPicker
           ui:options:
             allowedHosts:
               - github.com
 
-  # here's the steps that are executed in series in the scaffolder backend
+  ### Implementando as task com as informações do formulário
   steps:
-    - id: fetch-base
-      name: Fetch Base
+    - id: template
+      name: Buscar e sincronizar o template
       action: fetch:template
       input:
         url: ./template
+        copyWithoutRender:
+          - .github/workflows/*
         values:
-          name: ${{ parameters.name }}
-
-    - id: fetch-docs
-      name: Fetch Docs
-      action: fetch:plain
-      input:
-        targetPath: ./community
-        url: https://github.com/backstage/community/tree/main/backstage-community-sessions
+          name: '{{ parameters.name }}'
+          title: '{{ parameters.title }}'
+          description: '{{ parameters.description }}'
+          namespace: '{{ parameters.namespace }}'
+          owner: '{{ parameters.owner }}'
+          destination: '{{ parseRepoUrl parameters.repoUrl }}'
 
     - id: publish
-      name: Publish
+      name: Publicar projeto no repositorio
       action: publish:github
       input:
         allowedHosts: ['github.com']
-        description: This is ${{ parameters.name }}
-        repoUrl: ${{ parameters.repoUrl }}
+        description: 'This is {{ parameters.name }}'
+        repoUrl: '{{ parameters.repoUrl }}'
 
     - id: register
-      name: Register
+      name: Registar projeto ao catalogo
       action: catalog:register
       input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        repoContentsUrl: '{{ steps.publish.output.repoContentsUrl }}'
         catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    remoteUrl: '{{ steps.publish.output.remoteUrl }}'
+    entityRef: '{{ steps.publish.output.entityRef }}'
