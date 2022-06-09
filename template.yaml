@@ -1,4 +1,3 @@
-### Criando formulário para capturar os dados do projeto
   parameters:
     - title: Configuração do projeto
       required:
